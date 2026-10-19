@@ -34,7 +34,7 @@ S.util = (() => {
   function durationWords(sec) {
     sec = Math.round(sec || 0);
     const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60);
-    return h > 0 ? `${h}u ${m}m` : `${m}m`;
+    return h > 0 ? `${h}${t("u.h")} ${m}${t("u.m")}` : `${m}${t("u.m")}`;
   }
 
   // seconds per km -> "5:12"
@@ -44,20 +44,24 @@ S.util = (() => {
     return s === 60 ? `${m + 1}:00` : `${m}:${pad2(s)}`;
   }
 
-  function km(m, digits = 2) { return ((m || 0) / 1000).toFixed(digits).replace('.', ','); }
-
-  const DAYS = ['zo', 'ma', 'di', 'wo', 'do', 'vr', 'za'];
-  const MONTHS = ['jan', 'feb', 'mrt', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec'];
-
-  function date(ts) {
-    const d = new Date(ts);
-    return `${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+  // Locale-aware formatting; S.i18n sets the language before the first render.
+  const loc = () => (S.i18n ? S.i18n.locale() : 'nl-NL');
+  const fmtCache = new Map();
+  function fmt(opts) {
+    const k = loc() + JSON.stringify(opts);
+    if (!fmtCache.has(k)) fmtCache.set(k, new Intl.DateTimeFormat(loc(), opts));
+    return fmtCache.get(k);
   }
-  function dateTime(ts) {
-    const d = new Date(ts);
-    return `${date(ts)} · ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+  function num(v, digits = 1) {
+    const s = (v || 0).toFixed(digits);
+    return S.i18n && S.i18n.lang === 'en' ? s : s.replace('.', ',');
   }
-  function shortDate(ts) { const d = new Date(ts); return `${d.getDate()} ${MONTHS[d.getMonth()]}`; }
+  function km(m, digits = 2) { return num((m || 0) / 1000, digits); }
+
+  function date(ts) { return fmt({ weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }).format(ts); }
+  function dateTime(ts) { return `${date(ts)} · ${fmt({ hour: '2-digit', minute: '2-digit' }).format(ts)}`; }
+  function shortDate(ts) { return fmt({ day: 'numeric', month: 'short' }).format(ts); }
+  function weekday(ts) { return fmt({ weekday: 'short' }).format(ts); }
 
   function startOfDay(ts) { const d = new Date(ts); d.setHours(0, 0, 0, 0); return d.getTime(); }
   function startOfWeek(ts) { // Monday
@@ -73,12 +77,17 @@ S.util = (() => {
 
   function defaultName(ts, type) {
     const h = new Date(ts).getHours();
-    const part = h < 6 ? 'Nacht' : h < 12 ? 'Ochtend' : h < 14 ? 'Middag' : h < 18 ? 'Namiddag' : 'Avond';
-    const t = { run: 'loop', walk: 'wandeling', hike: 'hike', ride: 'rit' }[type] || 'loop';
-    return `${part}${t}`;
+    const part = h < 6 ? 'night' : h < 12 ? 'morning' : h < 14 ? 'noon' : h < 18 ? 'afternoon' : 'evening';
+    return t('dn.' + part, { type: t('noun.' + (type || 'run')) });
   }
 
-  const TYPES = { run: 'Hardlopen', walk: 'Wandelen', hike: 'Hiken', ride: 'Fietsen' };
+  // Sport names in the current language (keys stay stable in storage).
+  const TYPE_KEYS = ['run', 'walk', 'hike', 'ride'];
+  const TYPES = new Proxy({}, {
+    get: (_, k) => (TYPE_KEYS.includes(k) ? t('type.' + k) : undefined),
+    ownKeys: () => TYPE_KEYS,
+    getOwnPropertyDescriptor: (_, k) => (TYPE_KEYS.includes(k) ? { enumerable: true, configurable: true, value: t('type.' + k) } : undefined),
+  });
 
   function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
 
@@ -107,10 +116,10 @@ S.util = (() => {
     return close;
   }
 
-  function confirmSheet(title, body, okLabel = 'Bevestigen', danger = false) {
+  function confirmSheet(title, body, okLabel = t("confirm"), danger = false) {
     return new Promise((resolve) => {
       sheet(`<h2>${esc(title)}</h2><p class="muted">${esc(body)}</p>
-        <div class="btn-row"><button class="btn grow" data-close>Annuleren</button>
+        <div class="btn-row"><button class="btn grow" data-close>${esc(t("cancel"))}</button>
         <button class="btn grow ${danger ? 'danger' : 'primary'}" id="cOk">${esc(okLabel)}</button></div>`,
       (s, close) => {
         $('#sheetBackdrop').onclick = () => { close(); resolve(false); };
@@ -133,8 +142,8 @@ S.util = (() => {
   function css(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
 
   return {
-    dist, pathLength, bbox, duration, durationWords, pace, km, date, dateTime, shortDate,
+    dist, pathLength, bbox, duration, durationWords, pace, km, num, date, dateTime, shortDate, weekday,
     startOfDay, startOfWeek, startOfMonth, startOfYear, addDays, isoDay, defaultName, TYPES,
-    uid, esc, $, $$, toast, sheet, confirmSheet, download, slug, css, DAYS, MONTHS, pad2,
+    uid, esc, $, $$, toast, sheet, confirmSheet, download, slug, css, pad2,
   };
 })();

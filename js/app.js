@@ -3,12 +3,17 @@ S.app = (() => {
   const ROUTES = [
     [/^#\/record$/, 'record'], [/^#\/activities$/, 'activities'], [/^#\/activity\/(.+)$/, 'activity'],
     [/^#\/explore$/, 'explore'], [/^#\/route\/(.+)$/, 'route'], [/^#\/segment\/(.+)$/, 'segment'],
-    [/^#\/plan-route$/, 'planRoute'], [/^#\/training$/, 'training'], [/^#\/me$/, 'me'],
+    [/^#\/plan-route$/, 'planRoute'], [/^#\/training$/, 'training'], [/^#\/me$/, 'me'], [/^#\/friends$/, 'friends'],
   ];
   let cleanup = null, renderSeq = 0;
 
-  function title(t) { U.$('#title').textContent = t; document.title = t === 'Stride' ? t : `${t} · Stride`; }
+  function title(txt) { U.$('#title').textContent = txt; document.title = txt === 'Stride' ? txt : `${txt} · Stride`; }
   function topRight(html) { U.$('#topRight').innerHTML = html; }
+
+  function applyLabels() {
+    U.$$('[data-i18n]').forEach((el) => { el.textContent = t(el.dataset.i18n); });
+    document.documentElement.lang = S.i18n.lang;
+  }
 
   async function render() {
     const seq = ++renderSeq;
@@ -18,10 +23,12 @@ S.app = (() => {
     const view = S.views[name];
     if (cleanup) { try { cleanup(); } catch {} cleanup = null; }
     S.maps.destroyAll();
+    U.$('#sheet').hidden = true; U.$('#sheetBackdrop').hidden = true; // a sheet belongs to the screen that opened it
     const main = U.$('#view');
     main.className = view.full ? 'full' : '';
     main.innerHTML = '';
-    title(view.title); topRight('');
+    applyLabels();
+    title(t(view.titleKey)); topRight('');
     const back = U.$('#backBtn');
     back.hidden = !view.back;
     back.onclick = () => (history.length > 1 ? history.back() : (location.hash = view.back));
@@ -33,7 +40,7 @@ S.app = (() => {
       cleanup = c || null;
     } catch (e) {
       console.error(e);
-      main.innerHTML = `<div class="empty">Er ging iets mis: ${U.esc(e.message)}</div>`;
+      main.innerHTML = `<div class="empty">${U.esc(t('error', { msg: e.message }))}</div>`;
     }
     livePill();
   }
@@ -42,14 +49,13 @@ S.app = (() => {
     const st = S.tracker.st, pill = U.$('#livePill');
     const onRecord = (location.hash || '#/record') === '#/record';
     pill.hidden = st.state === 'idle' || onRecord;
-    U.$('#livePillText').textContent = st.state === 'paused' ? `Gepauzeerd · ${U.km(st.distance)} km` : `${U.duration(st.moving)} · ${U.km(st.distance)} km`;
+    U.$('#livePillText').textContent = st.state === 'paused' ? `${t('rec.paused')} · ${U.km(st.distance)} km` : `${U.duration(st.moving)} · ${U.km(st.distance)} km`;
   }
 
-  function applyTheme(t) {
-    if (t === 'dark' || t === 'light') document.documentElement.dataset.theme = t;
+  function applyTheme(th) {
+    if (th === 'dark' || th === 'light') document.documentElement.dataset.theme = th;
     else delete document.documentElement.dataset.theme;
-    const dark = S.maps.isDark();
-    document.querySelector('meta[name="theme-color"]').content = dark ? '#0e1013' : '#f5f6f4';
+    document.querySelector('meta[name="theme-color"]').content = S.maps.isDark() ? '#0e1013' : '#f5f6f4';
   }
 
   async function recover() {
@@ -57,11 +63,11 @@ S.app = (() => {
     if (unsaved) { location.hash = '#/record'; setTimeout(() => S.views.record.saveSheet(unsaved), 300); return; }
     const snap = await S.tracker.pending();
     if (snap && snap.points && snap.points.length) {
-      const go = await U.confirmSheet('Onderbroken activiteit gevonden',
-        `${U.km(snap.distance)} km, ${U.duration(snap.moving)} — gestart ${U.dateTime(snap.start)}. Doorgaan met deze opname?`, 'Doorgaan');
+      const go = await U.confirmSheet(t('rec.recoverQ'),
+        t('rec.recover.d', { km: U.km(snap.distance), time: U.duration(snap.moving), date: U.dateTime(snap.start) }), t('rec.recoverGo'));
       if (go) { await S.tracker.restore(snap); location.hash = '#/record'; render(); }
       else {
-        const save = await U.confirmSheet('Opslaan of weggooien?', 'Wil je de onderbroken activiteit opslaan zoals hij is?', 'Opslaan');
+        const save = await U.confirmSheet(t('rec.recoverSaveQ'), t('rec.recoverSave.d'), t('save'));
         await S.tracker.clearPending();
         if (save) {
           const a = S.analysis.finalize({ id: U.uid(), type: snap.type, name: U.defaultName(snap.start, snap.type), notes: '', start: snap.start, points: snap.points, source: 'gps' });
@@ -73,15 +79,16 @@ S.app = (() => {
 
   async function init() {
     const st = await S.db.settings();
+    S.i18n.set(st.lang || S.i18n.detect());
     applyTheme(st.theme);
     window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => applyTheme(st.theme));
     U.$('#livePill').onclick = () => (location.hash = '#/record');
     S.tracker.on(livePill);
+    await S.social.init(); // handles ?join= invite links and restores the signed-in session
     window.addEventListener('hashchange', render);
-    if (!location.hash) history.replaceState(null, '', '#/record');
+    if (!location.hash) history.replaceState(null, '', location.pathname + location.search + '#/record');
     await render();
     recover();
-    // Ask the browser not to evict our data under storage pressure.
     if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
     if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => {});
     window.addEventListener('beforeunload', (e) => { if (S.tracker.st.state !== 'idle') { e.preventDefault(); e.returnValue = ''; } });

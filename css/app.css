@@ -201,3 +201,8 @@ table.t td.r, table.t th.r { text-align: right; }
 
 .planner-bar { position: absolute; left: 12px; right: 12px; bottom: 12px; z-index: 500; }
 .leaflet-control-attribution { font-size: 9px; }
+
+.avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--bg-3); display: grid; place-items: center; font-weight: 800; flex: none; }
+table.t tr.me td { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.tabbar a { font-size: 10px; min-width: 0; }
+.tabbar a span:last-child { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0 2px; }

@@ -10,7 +10,7 @@ S.maps = (() => {
   }
 
   function create(el, opts = {}) {
-    if (!window.L) { el.innerHTML = '<div class="empty small">Kaart niet beschikbaar (offline?)</div>'; return null; }
+    if (!window.L) { el.innerHTML = '<div class="empty small">' + t('map.unavailable') + '</div>'; return null; }
     const map = L.map(el, { zoomControl: false, attributionControl: true, ...opts });
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19, className: isDark() ? 'tiles-dark' : '',

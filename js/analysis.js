@@ -4,9 +4,9 @@ S.analysis = (() => {
   const U = S.util;
 
   const EFFORTS = [
-    { m: 400, label: '400 m' }, { m: 1000, label: '1 km' }, { m: 1609.34, label: '1 mijl' },
-    { m: 5000, label: '5 km' }, { m: 10000, label: '10 km' }, { m: 21097.5, label: 'Halve marathon' },
-    { m: 42195, label: 'Marathon' },
+    { m: 400, key: 'ef.400' }, { m: 1000, key: 'ef.1k' }, { m: 1609.34, key: 'ef.mile' },
+    { m: 5000, key: 'goal.5k' }, { m: 10000, key: 'goal.10k' }, { m: 21097.5, key: 'goal.half' },
+    { m: 42195, key: 'goal.full' },
   ];
 
   // For imported tracks (GPX): derive d and e from raw timestamps.
@@ -292,6 +292,16 @@ S.analysis = (() => {
     return Math.round(st.weight * kmv * f);
   }
 
+  // Consecutive weeks (Mon–Sun) with at least one run, counting back from this week.
+  // An empty current week doesn't break the streak — it isn't over yet.
+  function weekStreak(starts) {
+    const weeks = new Set(starts.map((s) => S.util.startOfWeek(s)));
+    let w = S.util.startOfWeek(Date.now()), n = 0;
+    if (!weeks.has(w)) w = S.util.addDays(w, -7);
+    while (weeks.has(w)) { n++; w = S.util.addDays(w, -7); }
+    return n;
+  }
+
   // Everything derived that we store with an activity.
   function finalize(a) {
     Object.assign(a, summarize(a.points));
@@ -302,6 +312,6 @@ S.analysis = (() => {
 
   return {
     EFFORTS, ZONES, prepare, summarize, splits, bestEffort, bestEfforts, records, paceSeries, seriesBy,
-    zoneOf, timeInZones, load, fitness, matchSegment, simplify, calories, finalize, timeAt, elevationGain,
+    zoneOf, timeInZones, load, fitness, matchSegment, simplify, calories, finalize, timeAt, elevationGain, weekStreak,
   };
 })();

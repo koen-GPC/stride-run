@@ -1,14 +1,15 @@
 // Offline cache: app shell first, map tiles opportunistically.
-const VERSION = 'stride-v1';
+const VERSION = 'stride-v2';
 const SHELL = [
   './', './index.html', './manifest.webmanifest', './icon.svg', './icon-192.png',
-  './css/app.css',
+  './css/app.css', './js/config.js', './js/i18n.js', './js/social.js', './js/views-friends.js',
   './js/util.js', './js/db.js', './js/analysis.js', './js/charts.js', './js/maps.js',
   './js/hr.js', './js/tracker.js', './js/plan.js',
   './js/views-record.js', './js/views-activities.js', './js/views-explore.js',
   './js/views-training.js', './js/views-me.js', './js/app.js',
   'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
   'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
+  'https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.js',
 ];
 
 self.addEventListener('install', (e) => {
@@ -26,7 +27,7 @@ self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
   if (e.request.method !== 'GET') return;
   // Routing requests must always be live.
-  if (url.hostname.includes('routing.openstreetmap.de')) return;
+  if (url.hostname.includes('routing.openstreetmap.de') || url.hostname.endsWith('supabase.co')) return;
 
   if (url.hostname.includes('basemaps.cartocdn.com') || url.hostname.includes('tile.openstreetmap.org')) {
     e.respondWith(

@@ -20,7 +20,7 @@ S.charts = (() => {
       ctx.clearRect(0, 0, w, h);
       if (vals.length < 2) {
         ctx.fillStyle = U.css('--muted'); ctx.font = '13px sans-serif';
-        ctx.fillText('Geen gegevens', pad.l, h / 2); return;
+        ctx.fillText(t('noData'), pad.l, h / 2); return;
       }
       let lo = opts.min ?? Math.min(...vals), hi = opts.max ?? Math.max(...vals);
       if (opts.robust) { // ignore outliers for pace

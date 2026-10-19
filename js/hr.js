@@ -12,11 +12,11 @@ S.hr = (() => {
   }
 
   async function connect() {
-    if (!supported()) throw new Error('Bluetooth wordt in deze browser niet ondersteund');
+    if (!supported()) throw new Error(t('hr.unsupported'));
     device = await navigator.bluetooth.requestDevice({ filters: [{ services: ['heart_rate'] }] });
     device.addEventListener('gattserverdisconnected', onDisconnect);
     await subscribe();
-    return device.name || 'Hartslagmeter';
+    return device.name || t('hr.title');
   }
 
   async function subscribe() {
@@ -47,7 +47,7 @@ S.hr = (() => {
 
   function value() { return current && Date.now() - lastAt < 5000 ? current : null; }
   function connected() { return !!(device && device.gatt && device.gatt.connected); }
-  function name() { return device ? device.name || 'Hartslagmeter' : null; }
+  function name() { return device ? device.name || t('hr.title') : null; }
   function on(f) { listeners.add(f); return () => listeners.delete(f); }
 
   return { supported, connect, disconnect, value, connected, name, on };

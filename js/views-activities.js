@@ -3,7 +3,7 @@ S.gpx = (() => {
   const U = S.util;
   function parse(text) {
     const doc = new DOMParser().parseFromString(text, 'application/xml');
-    if (doc.querySelector('parsererror')) throw new Error('Ongeldig GPX-bestand');
+    if (doc.querySelector('parsererror')) throw new Error(t('gpx.invalid'));
     const pts = [];
     const nodes = doc.getElementsByTagName('trkpt').length ? doc.getElementsByTagName('trkpt') : doc.getElementsByTagName('rtept');
     for (const n of nodes) {
@@ -53,19 +53,19 @@ ${body}
 })();
 
 S.views.activities = {
-  tab: 'activities', title: 'Activiteiten',
+  tab: 'activities', titleKey: 'tab.activities',
   async render(main) {
     const U = S.util;
     const acts = await S.db.activities();
     const st = await S.db.settings();
     const recs = S.analysis.records(acts);
-    S.app.topRight(`<button class="btn sm" id="impBtn">GPX importeren</button>`);
+    S.app.topRight(`<button class="btn sm" id="impBtn">${t('gpx.import')}</button>`);
     U.$('#impBtn').onclick = () => S.views.activities.importGpx();
 
     if (!acts.length) {
-      main.innerHTML = `<div class="empty"><div class="big">🏃</div><p>Nog geen activiteiten.</p>
-        <p class="small">Start je eerste run via <b>Opnemen</b>, of importeer GPX-bestanden van Strava of je horloge.</p>
-        <div class="btn-row" style="justify-content:center"><a class="btn primary" href="#/record">Run starten</a></div></div>`;
+      main.innerHTML = `<div class="empty"><div class="big">🏃</div><p>${t('acts.empty')}</p>
+        <p class="small">${t('acts.empty.d')}</p>
+        <div class="btn-row" style="justify-content:center"><a class="btn primary" href="#/record">${t('acts.startRun')}</a></div></div>`;
       return;
     }
 
@@ -76,7 +76,7 @@ S.views.activities = {
       const w = U.startOfWeek(a.start);
       if (w !== curWeek) {
         curWeek = w;
-        html += `<div class="week-head"><span>Week van ${U.shortDate(w)}</span><span>${U.km(weekTotals.get(w), 1)} km</span></div>`;
+        html += `<div class="week-head"><span>${t('acts.weekOf', { date: U.shortDate(w) })}</span><span>${U.km(weekTotals.get(w), 1)} km</span></div>`;
       }
       const prs = a.type === 'run' ? S.analysis.EFFORTS.filter((e) => recs[e.m][0] && recs[e.m][0].id === a.id).length : 0;
       html += `<a class="card act" href="#/activity/${a.id}">
@@ -87,7 +87,7 @@ S.views.activities = {
           <div class="nums">
             <div><b>${U.km(a.distance)}</b><span class="muted">km</span></div>
             <div><b>${U.pace(a.moving / (a.distance / 1000))}</b><span class="muted">/km</span></div>
-            <div><b>${U.duration(a.moving)}</b><span class="muted">tijd</span></div>
+            <div><b>${U.duration(a.moving)}</b><span class="muted">${t('rec.time').toLowerCase()}</span></div>
           </div>
         </div></a>`;
     }
@@ -118,7 +118,7 @@ S.views.activities = {
           await S.db.saveActivity(a); ok++;
         } catch (e) { fail++; }
       }
-      U.toast(`${ok} geïmporteerd${skip ? `, ${skip} dubbel` : ''}${fail ? `, ${fail} mislukt (zonder tijden of ongeldig)` : ''}`, 3500);
+      U.toast(t('gpx.result', { ok }) + (skip ? ', ' + t('gpx.dupes', { n: skip }) : '') + (fail ? ', ' + t('gpx.failed', { n: fail }) : ''), 3500);
       S.app.render();
     };
     inp.click();
@@ -126,11 +126,11 @@ S.views.activities = {
 };
 
 S.views.activity = {
-  tab: 'activities', title: 'Activiteit', back: '#/activities',
+  tab: 'activities', titleKey: 'activity', back: '#/activities',
   async render(main, id) {
     const U = S.util, A = S.analysis;
     const a = await S.db.get('activities', id);
-    if (!a) { main.innerHTML = '<div class="empty">Activiteit niet gevonden.</div>'; return; }
+    if (!a) { main.innerHTML = `<div class="empty">${t('notFound')}</div>`; return; }
     const st = await S.db.settings();
     const acts = await S.db.activities();
     const recs = A.records(acts);
@@ -155,44 +155,44 @@ S.views.activity = {
     const slowest = Math.max(...splits.map((x) => x.pace), 0);
 
     main.innerHTML = `
-      <div class="muted small">${U.dateTime(a.start)} · ${U.TYPES[a.type] || a.type}${a.source === 'gpx' ? ' · geïmporteerd' : ''}</div>
+      <div class="muted small">${U.dateTime(a.start)} · ${U.TYPES[a.type] || a.type}${a.source === 'gpx' ? ' · ' + t('imported') : ''}</div>
       <h2 style="margin:4px 0 12px">${U.esc(a.name)}</h2>
       ${a.notes ? `<p>${U.esc(a.notes)}</p>` : ''}
       <div class="map-box" id="aMap"></div>
       <div class="card"><div class="stats">
-        <div class="stat"><div class="v">${U.km(a.distance)}</div><div class="l">Afstand (km)</div></div>
-        <div class="stat"><div class="v">${U.pace(avgPace)}</div><div class="l">Gem. tempo /km</div></div>
-        <div class="stat"><div class="v">${U.duration(a.moving)}</div><div class="l">Beweegtijd</div></div>
-        <div class="stat"><div class="v">${Math.round(a.elevGain || 0)} m</div><div class="l">Hoogtemeters</div></div>
-        <div class="stat"><div class="v">${U.duration(a.elapsed)}</div><div class="l">Totale tijd</div></div>
-        <div class="stat"><div class="v">≈${A.calories(a, st)}</div><div class="l">kcal (schatting)</div></div>
-        ${a.avgHr ? `<div class="stat"><div class="v">${a.avgHr}</div><div class="l">Gem. hartslag</div></div><div class="stat"><div class="v">${a.maxHr}</div><div class="l">Max. hartslag</div></div>` : ''}
-        <div class="stat"><div class="v">${load}</div><div class="l">Belasting</div></div>
-        ${a.rpe ? `<div class="stat"><div class="v">${a.rpe}/10</div><div class="l">Gevoel</div></div>` : ''}
+        <div class="stat"><div class="v">${U.km(a.distance)}</div><div class="l">${t('st.distance')}</div></div>
+        <div class="stat"><div class="v">${U.pace(avgPace)}</div><div class="l">${t('st.avgPace')}</div></div>
+        <div class="stat"><div class="v">${U.duration(a.moving)}</div><div class="l">${t('st.moving')}</div></div>
+        <div class="stat"><div class="v">${Math.round(a.elevGain || 0)} m</div><div class="l">${t('st.elev')}</div></div>
+        <div class="stat"><div class="v">${U.duration(a.elapsed)}</div><div class="l">${t('st.elapsed')}</div></div>
+        <div class="stat"><div class="v">≈${A.calories(a, st)}</div><div class="l">${t('st.kcal')}</div></div>
+        ${a.avgHr ? `<div class="stat"><div class="v">${a.avgHr}</div><div class="l">${t('st.avgHr')}</div></div><div class="stat"><div class="v">${a.maxHr}</div><div class="l">${t('st.maxHr')}</div></div>` : ''}
+        <div class="stat"><div class="v">${load}</div><div class="l">${t('st.load')}</div></div>
+        ${a.rpe ? `<div class="stat"><div class="v">${a.rpe}/10</div><div class="l">${t('st.feel')}</div></div>` : ''}
       </div></div>
 
-      ${efforts.length ? `<div class="section-title">Beste prestaties in deze activiteit</div><div class="card">
-        <table class="t">${efforts.map((e) => `<tr><td>${e.label}</td><td class="r"><b>${U.duration(e.time)}</b></td>
-          <td class="r">${e.rank === 0 ? '<span class="badge pr">🏆 PR</span>' : e.rank === 1 ? '<span class="badge">2e beste</span>' : e.rank === 2 ? '<span class="badge">3e beste</span>' : ''}</td></tr>`).join('')}</table></div>` : ''}
+      ${efforts.length ? `<div class="section-title">${t('act.bestEfforts')}</div><div class="card">
+        <table class="t">${efforts.map((e) => `<tr><td>${t(e.key)}</td><td class="r"><b>${U.duration(e.time)}</b></td>
+          <td class="r">${e.rank === 0 ? '<span class="badge pr">🏆 PR</span>' : e.rank === 1 ? `<span class="badge">${t('rank2')}</span>` : e.rank === 2 ? `<span class="badge">${t('rank3')}</span>` : ''}</td></tr>`).join('')}</table></div>` : ''}
 
-      ${segEfforts.length ? `<div class="section-title">Segmenten</div><div class="card">
+      ${segEfforts.length ? `<div class="section-title">${t('segments')}</div><div class="card">
         ${segEfforts.map(({ s, m }) => {
           const all = acts.map((x) => A.matchSegment(s, x)).filter(Boolean).sort((p, q) => p.time - q.time);
           const rank = all.findIndex((x) => x.activity === a.id) + 1;
           return `<a class="list-item" href="#/segment/${s.id}"><div class="grow"><b>${U.esc(s.name)}</b><div class="small muted">${U.km(s.distance, 2)} km · ${U.pace(m.time / (s.distance / 1000))} /km</div></div>
-            <div style="text-align:right"><b>${U.duration(m.time)}</b><div class="small">${rank === 1 ? '<span class="badge pr">🏆 PR</span>' : `#${rank} van ${all.length}`}</div></div></a>`;
+            <div style="text-align:right"><b>${U.duration(m.time)}</b><div class="small">${rank === 1 ? '<span class="badge pr">🏆 PR</span>' : t('rankOf', { rank, n: all.length })}</div></div></a>`;
         }).join('')}</div>` : ''}
 
-      <div class="section-title">Tempo</div><div class="card"><canvas class="chart" id="cPace"></canvas></div>
-      ${hasAlt ? `<div class="section-title">Hoogte</div><div class="card"><canvas class="chart" id="cAlt"></canvas></div>` : ''}
-      ${hasHr ? `<div class="section-title">Hartslag</div><div class="card"><canvas class="chart" id="cHr"></canvas></div>
-        <div class="section-title">Hartslagzones</div><div class="card"><div class="zones">${A.ZONES.map((z, i) => {
+      <div class="section-title">${t('pace')}</div><div class="card"><canvas class="chart" id="cPace"></canvas></div>
+      ${hasAlt ? `<div class="section-title">${t('elevation')}</div><div class="card"><canvas class="chart" id="cAlt"></canvas></div>` : ''}
+      ${hasHr ? `<div class="section-title">${t('rec.hr')}</div><div class="card"><canvas class="chart" id="cHr"></canvas></div>
+        <div class="section-title">${t('hrZones')}</div><div class="card"><div class="zones">${A.ZONES.map((z, i) => {
           const tot = zones.reduce((s, v) => s + v, 0) || 1;
           return `<div class="zone"><b>${z.n}</b><div class="track"><div class="fill" style="width:${(zones[i] / tot) * 100}%;background:var(--z${i + 1})"></div></div><span class="small r">${U.durationWords(zones[i])}</span></div>`;
-        }).join('')}</div><div class="small muted" style="margin-top:8px">Op basis van max. hartslag ${st.maxHr} (instelbaar onder Ik).</div></div>` : ''}
+        }).join('')}</div><div class="small muted" style="margin-top:8px">${t('zones.basis', { max: st.maxHr })}</div></div>` : ''}
 
-      ${splits.length ? `<div class="section-title">Splits</div><div class="card"><table class="t">
-        <tr><th>km</th><th>Tempo</th><th></th><th class="r">Hoogte</th></tr>
+      ${splits.length ? `<div class="section-title">${t('splits')}</div><div class="card"><table class="t">
+        <tr><th>km</th><th>${t('pace')}</th><th></th><th class="r">${t('elevation')}</th></tr>
         ${splits.map((s) => `<tr><td>${s.partial ? U.km(s.dist, 2) : s.n}</td><td><b>${U.pace(s.pace)}</b></td>
           <td style="width:45%"><div class="bar ${s.pace > avgPace * 1.05 ? 'slow' : ''}" style="width:${Math.max(8, 100 - ((s.pace - fastest) / Math.max(1, slowest - fastest)) * 70)}%"></div></td>
           <td class="r small muted">${s.elev != null ? (s.elev >= 0 ? '+' : '') + Math.round(s.elev) + ' m' : ''}</td></tr>`).join('')}
@@ -209,64 +209,71 @@ S.views.activity = {
       const p = pts.find((q) => q.d >= km) || pts[pts.length - 1];
       if (!marker) marker = S.maps.youMarker(map, [p.lat, p.lon]); else marker.setLatLng([p.lat, p.lon]);
     };
-    const fmtKm = (v) => v.toFixed(1).replace('.', ',') + ' km';
+    const fmtKm = (v) => U.num(v, 1) + ' km';
     const ps = A.paceSeries(pts);
     S.charts.line(U.$('#cPace'), ps.xs, ps.ys, { invert: true, robust: true, fmtY: U.pace, fmtX: fmtKm, onHover: hoverAt(ps) });
     if (hasAlt) { const s = A.seriesBy(pts, 'alt'); S.charts.line(U.$('#cAlt'), s.xs, s.ys, { color: '#8b95a1', fmtY: (v) => Math.round(v) + ' m', fmtX: fmtKm, onHover: hoverAt(s) }); }
     if (hasHr) { const s = A.seriesBy(pts, 'hr', 30); S.charts.line(U.$('#cHr'), s.xs, s.ys, { color: '#ff5c5c', fmtY: (v) => Math.round(v), fmtX: fmtKm, onHover: hoverAt(s) }); }
 
     U.$('#moreBtn').onclick = () => U.sheet(`<h2>${U.esc(a.name)}</h2>
-      <div class="list-item" id="mEdit"><div class="grow">Bewerken</div><span class="chev">›</span></div>
-      <div class="list-item" id="mSeg"><div class="grow">Segment maken van deel van deze route</div><span class="chev">›</span></div>
-      <div class="list-item" id="mRoute"><div class="grow">Opslaan als route</div><span class="chev">›</span></div>
-      <div class="list-item" id="mGpx"><div class="grow">Exporteren als GPX</div><span class="chev">›</span></div>
-      <div class="list-item" id="mDel"><div class="grow" style="color:var(--danger)">Verwijderen</div></div>`,
+      <div class="list-item" id="mEdit"><div class="grow">${t('edit')}</div><span class="chev">›</span></div>
+      <div class="list-item" id="mSeg"><div class="grow">${t('act.makeSeg')}</div><span class="chev">›</span></div>
+      <div class="list-item" id="mRoute"><div class="grow">${t('act.saveRoute')}</div><span class="chev">›</span></div>
+      <div class="list-item" id="mGpx"><div class="grow">${t('act.exportGpx')}</div><span class="chev">›</span></div>
+      ${S.social && S.social.enabled() ? `<div class="list-item" id="mShare"><div class="grow">${a.private ? t('act.shareOn') : t('act.shareOff')}</div><span class="chev">›</span></div>` : ''}
+      <div class="list-item" id="mDel"><div class="grow" style="color:var(--danger)">${t('delete')}</div></div>`,
     (s, close) => {
       U.$('#mGpx', s).onclick = () => { U.download(U.slug(a.name) + '.gpx', S.gpx.build(a.name, pts), 'application/gpx+xml'); close(); };
       U.$('#mRoute', s).onclick = async () => {
         await S.db.put('routes', { id: U.uid(), name: a.name, points: A.simplify(pts, 4), distance: a.distance, created: Date.now(), from: a.id });
-        close(); U.toast('Route opgeslagen');
+        close(); U.toast(t('routeSaved'));
       };
       U.$('#mDel', s).onclick = async () => {
-        if (await U.confirmSheet('Activiteit verwijderen?', 'Dit kan niet ongedaan worden gemaakt.', 'Verwijderen', true)) {
-          await S.db.deleteActivity(a.id); location.hash = '#/activities';
+        if (await U.confirmSheet(t('act.deleteQ'), t('cannotUndo'), t('delete'), true)) {
+          await S.db.deleteActivity(a.id); if (S.social) S.social.deleteRun(a.id).catch(() => {}); location.hash = '#/activities';
         }
       };
       U.$('#mEdit', s).onclick = () => S.views.activity.editSheet(a);
       U.$('#mSeg', s).onclick = () => { close(); S.views.activity.segmentSheet(a, map); };
+      const sh = U.$('#mShare', s);
+      if (sh) sh.onclick = async () => {
+        a.private = !a.private; await S.db.saveActivity(a); close();
+        if (a.private) await S.social.deleteRun(a.id).catch(() => {}); else await S.social.pushRun(a).catch(() => {});
+        U.toast(a.private ? t('act.nowPrivate') : t('act.nowShared'));
+      };
     });
   },
 
   editSheet(a) {
     const U = S.util;
-    U.sheet(`<h2>Bewerken</h2>
-      <label>Naam</label><input id="eName" value="${U.esc(a.name)}">
-      <label>Sport</label><select id="eType">${Object.entries(U.TYPES).map(([k, v]) => `<option value="${k}" ${k === a.type ? 'selected' : ''}>${v}</option>`).join('')}</select>
-      <label>Notities</label><textarea id="eNotes" rows="3">${U.esc(a.notes || '')}</textarea>
-      <label>Gevoel (RPE ${a.rpe || 5})</label><input id="eRpe" type="range" min="1" max="10" value="${a.rpe || 5}">
-      <div class="btn-row"><button class="btn grow" data-close>Annuleren</button><button class="btn primary grow" id="eSave">Opslaan</button></div>`,
+    U.sheet(`<h2>${t('edit')}</h2>
+      <label>${t('name')}</label><input id="eName" value="${U.esc(a.name)}">
+      <label>${t('sport')}</label><select id="eType">${Object.entries(U.TYPES).map(([k, v]) => `<option value="${k}" ${k === a.type ? 'selected' : ''}>${v}</option>`).join('')}</select>
+      <label>${t('notes')}</label><textarea id="eNotes" rows="3">${U.esc(a.notes || '')}</textarea>
+      <label>${t('rpe')}</label><input id="eRpe" type="range" min="1" max="10" value="${a.rpe || 5}">
+      <div class="btn-row"><button class="btn grow" data-close>${t('cancel')}</button><button class="btn primary grow" id="eSave">${t('save')}</button></div>`,
     (s, close) => {
       U.$('#eSave', s).onclick = async () => {
         a.name = U.$('#eName', s).value.trim() || a.name; a.type = U.$('#eType', s).value;
         a.notes = U.$('#eNotes', s).value.trim(); a.rpe = +U.$('#eRpe', s).value;
         S.analysis.finalize(a); a.load = S.analysis.load(a, await S.db.settings());
-        await S.db.saveActivity(a); close(); S.app.render();
+        await S.db.saveActivity(a); if (S.social) S.social.pushRun(a).catch(() => {}); close(); S.app.render();
       };
     });
   },
 
   segmentSheet(a, map) {
-    const U = S.util, pts = a.points, total = a.distance;
+    const U = S.util, pts = a.points, total = a.distance, tr = window.t;
     let hl = null;
     const step = 10;
     const max = Math.floor(total / step);
     const idxAt = (m) => { let i = pts.findIndex((p) => p.d >= m); return i < 0 ? pts.length - 1 : i; };
-    U.sheet(`<h2>Segment maken</h2><p class="muted small">Kies begin en eind. Het stuk wordt geel op de kaart. Daarna wordt elke run over dit stuk automatisch getimed.</p>
-      <label>Begin: <b id="sgA"></b></label><input type="range" id="sgFrom" min="0" max="${max}" value="0">
-      <label>Eind: <b id="sgB"></b></label><input type="range" id="sgTo" min="0" max="${max}" value="${max}">
+    U.sheet(`<h2>${t('seg.make')}</h2><p class="muted small">${t('seg.make.d')}</p>
+      <label>${t('seg.start')}: <b id="sgA"></b></label><input type="range" id="sgFrom" min="0" max="${max}" value="0">
+      <label>${t('seg.end')}: <b id="sgB"></b></label><input type="range" id="sgTo" min="0" max="${max}" value="${max}">
       <div class="small muted" id="sgLen" style="margin-top:8px"></div>
-      <label>Naam</label><input id="sgName" placeholder="Bijv. Brug tot molen">
-      <div class="btn-row"><button class="btn grow" data-close>Annuleren</button><button class="btn primary grow" id="sgSave">Segment opslaan</button></div>`,
+      <label>${t('name')}</label><input id="sgName" placeholder="${U.esc(t('seg.name.ph'))}">
+      <div class="btn-row"><button class="btn grow" data-close>${t('cancel')}</button><button class="btn primary grow" id="sgSave">${t('seg.save')}</button></div>`,
     (s, close) => {
       // the sheet covers the map's lower part; keep it visible above
       U.$('#sheet').style.maxHeight = '60dvh';
@@ -276,7 +283,7 @@ S.views.activity = {
         let f = +U.$('#sgFrom', s).value * step, t = +U.$('#sgTo', s).value * step;
         if (t < f) [f, t] = [t, f];
         U.$('#sgA', s).textContent = U.km(f, 2) + ' km'; U.$('#sgB', s).textContent = U.km(t, 2) + ' km';
-        U.$('#sgLen', s).textContent = `Lengte ${U.km(t - f, 2)} km`;
+        U.$('#sgLen', s).textContent = `${tr('seg.length')} ${U.km(t - f, 2)} km`;
         if (map) {
           hl && hl.remove();
           hl = L.polyline(S.maps.latlngs(pts.slice(idxAt(f), idxAt(t) + 1)), { color: '#ffd400', weight: 7 }).addTo(map);
@@ -289,9 +296,9 @@ S.views.activity = {
       U.$('#sheetBackdrop').onclick = () => { cleanup(); close(); };
       U.$('#sgSave', s).onclick = async () => {
         const [f, t] = upd();
-        if (t - f < 200) { U.toast('Een segment moet minstens 200 m zijn'); return; }
+        if (t - f < 200) { U.toast(tr('seg.tooShort')); return; }
         const slice = pts.slice(idxAt(f), idxAt(t) + 1);
-        const seg = { id: U.uid(), name: U.$('#sgName', s).value.trim() || `Segment ${U.km(t - f, 1)} km`, points: S.analysis.simplify(slice, 3), distance: slice[slice.length - 1].d - slice[0].d, created: Date.now() };
+        const seg = { id: U.uid(), name: U.$('#sgName', s).value.trim() || `${tr('segment')} ${U.km(t - f, 1)} km`, points: S.analysis.simplify(slice, 3), distance: slice[slice.length - 1].d - slice[0].d, created: Date.now() };
         await S.db.put('segments', seg);
         cleanup(); close();
         location.hash = '#/segment/' + seg.id;

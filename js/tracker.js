@@ -48,7 +48,7 @@ S.tracker = (() => {
 
     st.distance += dd;
     st.lastMoveAt = Date.now();
-    if (st.autoPaused) { st.autoPaused = false; if (settings.voice) say('Hervat'); }
+    if (st.autoPaused) { st.autoPaused = false; if (settings.voice) say(t('v.resumed')); }
     push({ ...p, d: st.distance, e: st.moving, hr });
     announce();
     persistSoon();
@@ -65,7 +65,7 @@ S.tracker = (() => {
     if (st.state === 'running') {
       if (settings.autoPause && !st.autoPaused && st.points.length && now - st.lastMoveAt > 8000) {
         st.autoPaused = true;
-        if (settings.voice) say('Automatisch gepauzeerd');
+        if (settings.voice) say(t('v.autopaused'));
       }
       if (!st.autoPaused) st.moving += Math.min(dt, 5);
     }
@@ -76,13 +76,18 @@ S.tracker = (() => {
   function say(text) {
     if (!window.speechSynthesis) return;
     const u = new SpeechSynthesisUtterance(text);
-    u.lang = 'nl-NL'; u.rate = 1.02;
+    u.lang = S.i18n.voiceLang(); u.rate = 1.02;
     speechSynthesis.cancel(); speechSynthesis.speak(u);
   }
   function paceWords(spk) {
     if (!isFinite(spk) || spk <= 0) return '';
-    const m = Math.floor(spk / 60), s = Math.round(spk % 60);
-    return `${m} minuten${s ? ' ' + s : ''} per kilometer`;
+    let m = Math.floor(spk / 60), sec = Math.round(spk % 60);
+    if (sec === 60) { m++; sec = 0; }
+    return t('v.pace', { m, s: sec });
+  }
+  function timeWords(sec) {
+    const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60);
+    return h ? t('v.timeH', { h, m }) : t('v.timeM', { m });
   }
   function announce() {
     if (!settings.voice || st.distance < st.nextAnnounce) return;
@@ -91,10 +96,9 @@ S.tracker = (() => {
     const prev = st.laps.length ? st.laps[st.laps.length - 1] : { d: 0, e: 0 };
     const lapPace = (st.moving - prev.e) / ((k - prev.d) / 1000);
     st.laps.push({ d: k, e: st.moving });
-    const kmTxt = (k / 1000).toString().replace('.', ' komma ');
-    let text = `${kmTxt} kilometer. Tijd ${U.durationWords(st.moving).replace('u', ' uur').replace('m', ' minuten')}. Laatste ${every >= 1000 ? 'kilometer' : 'stuk'} ${paceWords(lapPace)}.`;
+    let text = t('v.split', { km: U.num(k / 1000, k % 1000 ? 1 : 0), time: timeWords(st.moving), pace: paceWords(lapPace) });
     const hr = S.hr.value();
-    if (hr) text += ` Hartslag ${hr}.`;
+    if (hr) text += ' ' + t('v.hr', { hr });
     say(text);
     st.nextAnnounce = k + every;
   }
@@ -130,7 +134,7 @@ S.tracker = (() => {
     Object.assign(st, { state: 'running', type, routeId, points: [], start: Date.now(), moving: 0, distance: 0, autoPaused: false, lastMoveAt: Date.now(), resumeNext: false, laps: [] });
     await begin();
     st.nextAnnounce = settings.voiceEvery || 1000;
-    if (settings.voice) say('Activiteit gestart');
+    if (settings.voice) say(t('v.started'));
     emit();
   }
 
@@ -144,13 +148,13 @@ S.tracker = (() => {
     if (st.state !== 'running') return;
     st.state = 'paused'; st.autoPaused = false;
     S.db.kvSet('live', snapshot()).catch(() => {});
-    if (settings.voice) say('Gepauzeerd');
+    if (settings.voice) say(t('v.paused'));
     emit();
   }
   function resume() {
     if (st.state !== 'paused') return;
     st.state = 'running'; st.resumeNext = true; st.lastMoveAt = Date.now(); st.lastTick = Date.now();
-    if (settings.voice) say('Hervat');
+    if (settings.voice) say(t('v.resumed'));
     lock(); emit();
   }
 
