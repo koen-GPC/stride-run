@@ -207,6 +207,7 @@ S.tracker = (() => {
     const now = Date.now();
     if (!st.autoPaused) st.pauseStart = now; // an auto-pause already has its (earlier) start
     st.state = 'paused'; st.autoPaused = false;
+    st.moving = movingAt(now);
     persistNow();
     if (settings.voice) say(t('v.paused'));
     emit();
