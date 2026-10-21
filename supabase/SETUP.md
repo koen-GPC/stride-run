@@ -17,4 +17,30 @@
 
 Deel nooit de **service_role / secret** key, en zet hem nooit in de app.
 
+## Gekoppeld aan GitHub Pages
+
+`js/config.js` bevat de publieke projectconfiguratie voor `suwixbbpjvitlvbcfawe`.
+Deze app is gewone HTML/JavaScript: `NEXT_PUBLIC_*`-variabelen worden hier niet
+automatisch ingelezen. Er is geen buildstap nodig.
+
+De e-mailcode-flow gebruikt `signInWithOtp` (bestaande en nieuwe gebruikers) en
+`verifyOtp` met `type: 'email'`. Zowel **Magic Link** als **Confirm signup** moet
+`{{ .Token }}` tonen. SMTP-gegevens blijven uitsluitend in Supabase.
+Zie de [Supabase-handleiding](https://supabase.com/docs/guides/auth/auth-email-passwordless).
+
+Controle na publicatie:
+
+1. Open `https://koen-gpc.github.io/stride-run/#/friends` en vraag een code aan.
+2. Controleer inbox/spam en voer de code in dezelfde app in. Test ook een
+   onjuiste code; daarna moet opnieuw invoeren mogelijk blijven.
+3. Vul bij een nieuw account een naam in. Controleer een groep aanmaken,
+   uitnodigen en aanmelden met een tweede account.
+4. Herlaad de app: je moet ingelogd blijven. Test uitloggen en opnieuw inloggen.
+5. Controleer dit ook via de geïnstalleerde telefoonapp. Heropen de app voor de
+   nieuwe offlinecache; verwijder geen browsergegevens, daarin staan je runs.
+
+Geautomatiseerde regressietests: `node --test` (geen extra pakketten nodig).
+Echte mailbezorging, SMTP/templates en toegang met twee accounts vragen een
+praktijktest; deze zijn niet bewezen door de geautomatiseerde tests.
+
 **Let op, e-maillimiet:** de ingebouwde mailer van Supabase verstuurt maar een paar mails per uur. Voor een kleine vriendengroep is dat genoeg als niet iedereen tegelijk inlogt. Wordt het te krap, koppel dan bij **Authentication → Emails → SMTP Settings** een gratis mailer (bijv. Resend of Brevo).

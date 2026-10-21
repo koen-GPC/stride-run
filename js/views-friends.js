@@ -163,18 +163,22 @@ S.views.friends = {
         <button class="btn primary block" id="aVerify" style="margin-top:12px">${t('fr.verify')}</button>
         <p class="small muted">${t('fr.codeHint')}</p>
       </div></div>`;
-    U.$('#aSend').onclick = async () => {
-      const email = U.$('#aEmail').value.trim();
+    // Keep references to this screen: an auth event or navigation may replace it
+    // while a request is in flight.
+    const emailInput = U.$('#aEmail'), send = U.$('#aSend');
+    const codeBox = U.$('#aCodeBox'), codeInput = U.$('#aCode'), verify = U.$('#aVerify');
+    send.onclick = async () => {
+      const email = emailInput.value.trim();
       if (!/^\S+@\S+\.\S+$/.test(email)) { U.toast(t('fr.badEmail')); return; }
-      U.$('#aSend').disabled = true;
-      try { await F.sendCode(email); sessionStorage.setItem('otpEmail', email); U.$('#aCodeBox').hidden = false; U.toast(t('fr.codeSent')); }
+      send.disabled = true;
+      try { await F.sendCode(email); sessionStorage.setItem('otpEmail', email); codeBox.hidden = false; U.toast(t('fr.codeSent')); }
       catch (e) { U.toast(e.message, 4000); }
-      U.$('#aSend').disabled = false;
+      send.disabled = false;
     };
-    U.$('#aVerify').onclick = async () => {
-      U.$('#aVerify').disabled = true;
-      try { await F.verifyCode(U.$('#aEmail').value.trim(), U.$('#aCode').value); sessionStorage.removeItem('otpEmail'); S.app.render(); }
-      catch (e) { U.toast(e.message, 4000); U.$('#aVerify').disabled = false; }
+    verify.onclick = async () => {
+      verify.disabled = true;
+      try { await F.verifyCode(emailInput.value.trim(), codeInput.value); sessionStorage.removeItem('otpEmail'); S.app.render(); }
+      catch (e) { U.toast(e.message, 4000); verify.disabled = false; }
     };
   },
 

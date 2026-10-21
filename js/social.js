@@ -26,10 +26,17 @@ S.social = (() => {
       session = data.session;
       // Clean ?code=… left behind by a magic-link sign-in.
       if (new URLSearchParams(location.search).has('code')) history.replaceState(null, '', location.pathname + (location.hash || '#/friends'));
-      client.auth.onAuthStateChange(async (_ev, s) => {
+      client.auth.onAuthStateChange((_ev, s) => {
         const changed = (s?.user?.id || null) !== (session?.user?.id || null);
         session = s;
-        if (changed) { profile = null; await loadProfile(); emit(); }
+        // Supabase holds its auth lock during this callback. Defer database
+        // requests until it returns, otherwise OTP verification can deadlock.
+        if (changed) {
+          profile = null;
+          setTimeout(() => loadProfile().then(emit).catch((e) => {
+            console.error('social profile', e); emit();
+          }), 0);
+        }
       });
       await loadProfile();
     })().catch((e) => console.error('social init', e));
@@ -57,7 +64,7 @@ S.social = (() => {
     const { data } = await client.auth.getSession(); session = data.session;
     await loadProfile(); emit();
   }
-  async function signOut() { await client.auth.signOut(); session = null; profile = null; emit(); }
+  async function signOut() { check(await client.auth.signOut()); session = null; profile = null; emit(); }
 
   async function saveProfile(name) {
     profile = check(await client.from('profiles').upsert({ id: user().id, name: name.trim().slice(0, 40) }).select().single());

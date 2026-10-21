@@ -2,7 +2,7 @@
 const VERSION = 'stride-v3';
 const SHELL = [
   './', './index.html', './manifest.webmanifest', './icon.svg', './icon-192.png',
-  './css/app.css', './js/config.js', './js/i18n.js', './js/social.js', './js/views-friends.js',
+  './css/app.css', './js/config.js?v=3', './js/i18n.js', './js/social.js?v=3', './js/views-friends.js?v=3',
   './js/util.js', './js/db.js', './js/analysis.js', './js/charts.js', './js/maps.js',
   './js/hr.js', './js/tracker.js', './js/plan.js',
   './js/views-record.js', './js/views-activities.js', './js/views-explore.js',
