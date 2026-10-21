@@ -1,5 +1,5 @@
 // Offline cache: app shell first, map tiles opportunistically.
-const VERSION = 'stride-v2';
+const VERSION = 'stride-v3';
 const SHELL = [
   './', './index.html', './manifest.webmanifest', './icon.svg', './icon-192.png',
   './css/app.css', './js/config.js', './js/i18n.js', './js/social.js', './js/views-friends.js',

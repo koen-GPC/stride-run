@@ -61,7 +61,7 @@ S.views.record = {
       else if (s === 'running') c.innerHTML = `<button class="round pause" id="bPause">${t('rec.pause')}</button><button class="round small pause" id="bLap">${t('rec.lap')}</button>`;
       else c.innerHTML = `<button class="round go small" id="bResume">${t('rec.resume')}</button><button class="round stop" id="bFinish">${t('rec.finish')}</button>`;
       const on = (id, f) => { const b = U.$('#' + id); if (b) b.onclick = f; };
-      on('bStart', () => T.start(T.st.type, T.st.routeId));
+      on('bStart', () => { T.start(T.st.type, T.st.routeId); U.toast(t('rec.bgHint'), 6000); });
       on('bPause', () => T.pause());
       on('bResume', () => T.resume());
       on('bLap', () => { T.say(t('v.lap', { km: U.km(T.st.distance, 2) })); U.toast(t('rec.lapMarked')); });

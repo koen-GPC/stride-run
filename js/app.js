@@ -62,18 +62,11 @@ S.app = (() => {
     const unsaved = await S.db.kvGet('unsaved', null);
     if (unsaved) { location.hash = '#/record'; setTimeout(() => S.views.record.saveSheet(unsaved), 300); return; }
     const snap = await S.tracker.pending();
-    if (snap && snap.points && snap.points.length) {
-      const go = await U.confirmSheet(t('rec.recoverQ'),
-        t('rec.recover.d', { km: U.km(snap.distance), time: U.duration(snap.moving), date: U.dateTime(snap.start) }), t('rec.recoverGo'));
-      if (go) { await S.tracker.restore(snap); location.hash = '#/record'; render(); }
-      else {
-        const save = await U.confirmSheet(t('rec.recoverSaveQ'), t('rec.recoverSave.d'), t('save'));
-        await S.tracker.clearPending();
-        if (save) {
-          const a = S.analysis.finalize({ id: U.uid(), type: snap.type, name: U.defaultName(snap.start, snap.type), notes: '', start: snap.start, points: snap.points, source: 'gps' });
-          S.views.record.saveSheet(a);
-        }
-      }
+    // A recording only ends when the user presses Finish: if the app was closed or killed, just carry on.
+    if (snap && snap.start && snap.state !== 'idle') {
+      await S.tracker.restore(snap); // the record screen follows the tracker's state on its own
+      livePill();
+      U.toast(t('rec.continued'), 3000);
     }
   }
 
